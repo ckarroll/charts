@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+      "outDir": "./dist/",
+      "strict": true,
+      "strictBindCallApply": true,
+      "sourceMap": true,
+      "noImplicitAny": true,
+      "noImplicitReturns": true,
+      "noImplicitThis": true,
+      "noUnusedLocals": true,
+      "useUnknownInCatchVariables": false,
+      "module": "ES2020",
+      "target": "ES2019",
+      "jsx": "react",
+      "allowJs": true,
+      "moduleResolution": "node",
+      "allowSyntheticDefaultImports" : true,
+      "esModuleInterop" : true
+    }
+  }
