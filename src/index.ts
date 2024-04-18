@@ -7,19 +7,53 @@ declare global {
 }
 
 function getXScale<T extends (number | string)[]>(data: T, boxWidth: number){
-    if (typeof data[0] === "number"){
-        return d3.scaleBand<number>()
-            .domain(data.map((d, i) => i))
-            .range([0, boxWidth])
-            .paddingInner(0.05)
-            .paddingOuter(0.01);
-    }
-    if (typeof data[0] === "string"){
-        return d3.scaleLinear()
-            .domain([0, 1000])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
-            .range([0, width]);
+    switch(typeof data[0]){
+        case "number":
+            return d3.scaleBand<number>()
+                .domain(data.map((d, i) => i))
+                .range([0, boxWidth])
+                .paddingInner(0.05)
+                .paddingOuter(0.01);
+        case "string": 
+            return d3.scaleBand()
+                .domain(data as string[])
+                .range([0, boxWidth])
+                .paddingInner(0.05)
+                .paddingOuter(0.01);
     }
 }
+
+function getYScale<T extends (number | string)[]>(data: T, boxHeight: number){
+    switch(typeof data[0]){
+        case "number":
+            return d3.scaleLinear()
+                    .domain([0, d3.max(data as number[])!])
+                    .range([boxHeight, 0]);
+        case "string":
+            return d3.scaleLinear()
+                    .domain([0, d3.max(d3.rollup(data, d => d.length, d => d).values())!])
+                    .range([boxHeight, 0]);
+    }
+}
+
+function xAttr<T extends (number | string)>(x: d3.ScaleBand<number | string>, item: T, index: number){
+    switch(typeof item){
+        case "number":
+            return x(index);
+        case "string":
+            return x(item);
+    }    
+}
+
+function yAttr<T extends (number | string)>(data: T[], y: d3.ScaleLinear<number, number, never>, item: T){
+    switch(typeof item){
+        case "number":
+            return y(item);
+        case "string":
+            return y(d3.rollup(data, d => d.length, d => d).get(item)!);
+    }    
+}
+
 
 Array.prototype.draw = function<T extends (number | string)>(this: T[]) {
     // set the dimensions and margins of the graph
@@ -36,39 +70,33 @@ Array.prototype.draw = function<T extends (number | string)>(this: T[]) {
         .attr("transform",
             `translate(${margin.left},${margin.top})`);
 
-    // X axis: scale and draw:
-    const x = d3.scaleBand<number>()
-        .domain(this.map((d, i) => i))
-        .range([0, width])
-        .paddingInner(0.05)
-        .paddingOuter(0.01);
+    const x = getXScale(this, width);
 
-    const y = d3.scaleLinear()
-        .domain([0, d3.max(this)!])
-        .range([height, 0]);
+    const y = getYScale(this, height);
 
-    const [min, max] = d3.extent(this);
-    const color = d3.scaleLinear<string, number>()
-        .domain([min!, max!])
-        .range(['yellow', 'red']);
+    // const [min, max] = d3.extent(this);
+    // const color = d3.scaleLinear<string, number>()
+    //     .domain([min!, max!])
+    //     .range(['yellow', 'red']);
 
     svg.append("g")
         .attr("transform", `translate(0, ${height})`)
-        .call(d3.axisBottom(x));
+        .call(d3.axisBottom<number | string>(x as d3.ScaleBand<number | string>));
 
     svg.append("g")
         .call(d3.axisLeft(y));
 
-    
     // append the bar rectangles to the svg element
     svg.selectAll("rect")
         .data(this)
         .join("rect")
-        .attr("x", (d, i) => x(i)!)
-        .attr("y", (d) => y(d))
+        .attr("x", (d, i) => xAttr(x as d3.ScaleBand<number | string>, d, i)!)
+        .attr("y", (d) => yAttr(this, y, d))
         .attr("width", x.bandwidth())
-        .attr("height", function (d, i) { return height - y(d); })
-        .attr("fill", d => color(d))
+        .attr("height", (d, i) => { return height - yAttr(this, y, d); })
+        .style("fill", "#69b3a2")
+        .on('click', console.log)
+        // .attr("fill", d => color(d))
         .append("title")
         .text(d => d);
 }
